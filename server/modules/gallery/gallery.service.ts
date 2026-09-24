@@ -1,7 +1,10 @@
 import { Injectable, Inject, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
-import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
 import { eq, and, desc, asc, count, sql } from 'drizzle-orm';
-import { galleryItems, galleryLikes, galleryComments } from '@server/database/schema';
+
+import { DATABASE_CONNECTION } from '../../database/database.module';
+import type { AppDatabase } from '../../database/database.module';
+import { galleryItems, galleryLikes, galleryComments } from '../../database/schema';
+import { NotificationsService } from '../notifications/notifications.service';
 import type {
   GalleryItem,
   GalleryListResponse,
@@ -9,15 +12,14 @@ import type {
   GalleryCommentItem,
   GalleryCommentListResponse,
   CreateGalleryCommentRequest,
-} from '@shared/api.interface';
-import { NotificationsService } from '../notifications/notifications.service';
+} from '../../../shared/api.interface';
 
 @Injectable()
 export class GalleryService {
   private readonly logger = new Logger(GalleryService.name);
 
   constructor(
-    @Inject(DRIZZLE_DATABASE) private readonly db: PostgresJsDatabase,
+    @Inject(DATABASE_CONNECTION) private readonly db: AppDatabase,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -33,7 +35,7 @@ export class GalleryService {
       isPinned: item.isPinned,
       likeCount: item.likeCount,
       commentCount: item.commentCount,
-      creatorId: item.createdBy,
+      creatorId: item.creatorId,
       createdAt: item.createdAt.toISOString(),
       isLiked,
     };
@@ -114,8 +116,7 @@ export class GalleryService {
         title: dto.title,
         imageUrl: dto.imageUrl,
         projectId: dto.projectId ?? null,
-        createdBy: userId,
-        updatedBy: userId,
+        creatorId: userId,
       })
       .returning();
 
@@ -200,7 +201,7 @@ export class GalleryService {
         galleryId: c.galleryId,
         content: c.content,
         replyTo: c.replyTo ?? null,
-        creatorId: c.createdBy,
+        creatorId: c.creatorId,
         createdAt: c.createdAt.toISOString(),
       }),
     );
@@ -229,7 +230,7 @@ export class GalleryService {
           galleryId: dto.galleryId,
           content: dto.content,
           replyTo: dto.replyTo ?? null,
-          createdBy: userId,
+          creatorId: userId,
         })
         .returning();
 
@@ -240,7 +241,7 @@ export class GalleryService {
         })
         .where(eq(galleryItems.id, dto.galleryId));
 
-      const authorId: string = galleryRecords[0].createdBy;
+      const authorId: string = galleryRecords[0].creatorId;
       const isAuthorComment: boolean = authorId === userId;
 
       return { comment: inserted[0], authorId, isAuthorComment };
@@ -260,12 +261,16 @@ export class GalleryService {
       galleryId: result.comment.galleryId,
       content: result.comment.content,
       replyTo: result.comment.replyTo ?? null,
-      creatorId: result.comment.createdBy,
+      creatorId: result.comment.creatorId,
       createdAt: result.comment.createdAt.toISOString(),
     };
   }
 
-  async deleteComment(userId: string, commentId: string): Promise<void> {
+  async deleteComment(
+    userId: string,
+    role: 'user' | 'admin',
+    commentId: string,
+  ): Promise<void> {
     const existing = await this.db
       .select()
       .from(galleryComments)
@@ -276,7 +281,7 @@ export class GalleryService {
       throw new NotFoundException('评论不存在');
     }
 
-    if (existing[0].createdBy !== userId) {
+    if (role !== 'admin' && existing[0].creatorId !== userId) {
       throw new ForbiddenException('只能删除自己的评论');
     }
 
@@ -300,7 +305,7 @@ export class GalleryService {
     const items = await this.db
       .select()
       .from(galleryItems)
-      .where(eq(galleryItems.createdBy, userId))
+      .where(eq(galleryItems.creatorId, userId))
       .orderBy(desc(galleryItems.createdAt));
 
     const likedIds: string[] = (

@@ -6,72 +6,68 @@ import {
   Body,
   Param,
   Query,
-  Req,
 } from '@nestjs/common';
-import type { Request } from 'express';
-import { NeedLogin } from '@lark-apaas/fullstack-nestjs-core';
+
 import { GalleryService } from './gallery.service';
+import { Public } from '../../auth/decorators/public.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../../auth/decorators/current-user.decorator';
 import type {
   GalleryItem,
   GalleryListResponse,
   CreateGalleryRequest,
   GalleryCommentListResponse,
   CreateGalleryCommentRequest,
-} from '@shared/api.interface';
+} from '../../../shared/api.interface';
 
 @Controller('api/gallery')
 export class GalleryController {
   constructor(private readonly galleryService: GalleryService) {}
 
+  @Public()
   @Get()
   async list(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser | undefined,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
   ): Promise<GalleryListResponse> {
     const pageNum: number = page ? parseInt(page, 10) : 1;
     const pageSizeNum: number = pageSize ? parseInt(pageSize, 10) : 12;
-    const currentUserId: string | undefined = req.userContext?.userId;
-    return this.galleryService.list(pageNum, pageSizeNum, currentUserId);
+    return this.galleryService.list(pageNum, pageSizeNum, user?.userId);
   }
 
   @Get('mine')
-  @NeedLogin()
-  async getMine(@Req() req: Request): Promise<{ items: GalleryItem[] }> {
-    const { userId } = req.userContext;
-    const items: GalleryItem[] = await this.galleryService.getMine(userId);
+  async getMine(@CurrentUser() user: AuthUser): Promise<{ items: GalleryItem[] }> {
+    const items: GalleryItem[] = await this.galleryService.getMine(user.userId);
     return { items };
   }
 
+  @Public()
   @Get(':id')
   async getById(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser | undefined,
     @Param('id') id: string,
   ): Promise<GalleryItem> {
-    const currentUserId: string | undefined = req.userContext?.userId;
-    return this.galleryService.getById(id, currentUserId);
+    return this.galleryService.getById(id, user?.userId);
   }
 
   @Post()
-  @NeedLogin()
   async create(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
     @Body() dto: CreateGalleryRequest,
   ): Promise<GalleryItem> {
-    const { userId } = req.userContext;
-    return this.galleryService.create(userId, dto);
+    return this.galleryService.create(user.userId, dto);
   }
 
   @Post(':id/like')
-  @NeedLogin()
   async toggleLike(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
     @Param('id') galleryId: string,
   ): Promise<{ liked: boolean; likeCount: number }> {
-    const { userId } = req.userContext;
-    return this.galleryService.toggleLike(userId, galleryId);
+    return this.galleryService.toggleLike(user.userId, galleryId);
   }
 
+  @Public()
   @Get(':id/comments')
   async listComments(
     @Param('id') galleryId: string,
@@ -80,23 +76,26 @@ export class GalleryController {
   }
 
   @Post('comments')
-  @NeedLogin()
   async createComment(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
     @Body() dto: CreateGalleryCommentRequest,
-  ): Promise<{ id: string; galleryId: string; content: string; replyTo: string | null; creatorId: string; createdAt: string }> {
-    const { userId } = req.userContext;
-    return this.galleryService.createComment(userId, dto);
+  ): Promise<{
+    id: string;
+    galleryId: string;
+    content: string;
+    replyTo: string | null;
+    creatorId: string;
+    createdAt: string;
+  }> {
+    return this.galleryService.createComment(user.userId, dto);
   }
 
   @Delete('comments/:id')
-  @NeedLogin()
   async deleteComment(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
     @Param('id') commentId: string,
   ): Promise<{ success: boolean }> {
-    const { userId } = req.userContext;
-    await this.galleryService.deleteComment(userId, commentId);
+    await this.galleryService.deleteComment(user.userId, user.role, commentId);
     return { success: true };
   }
 }

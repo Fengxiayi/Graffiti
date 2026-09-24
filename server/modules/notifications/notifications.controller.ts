@@ -4,38 +4,34 @@ import {
   Patch,
   Post,
   Param,
-  Req,
 } from '@nestjs/common';
-import type { Request } from 'express';
-import { NeedLogin } from '@lark-apaas/fullstack-nestjs-core';
+
 import { NotificationsService } from './notifications.service';
-import type { NotificationListResponse } from '@shared/api.interface';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../../auth/decorators/current-user.decorator';
+import type { NotificationListResponse } from '../../../shared/api.interface';
 
 @Controller('api/notifications')
-@NeedLogin()
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @Get()
-  async list(@Req() req: Request): Promise<NotificationListResponse> {
-    const { userId } = req.userContext;
-    return this.notificationsService.list(userId);
+  async list(@CurrentUser() user: AuthUser): Promise<NotificationListResponse> {
+    return this.notificationsService.list(user.userId);
   }
 
   @Patch(':id/read')
   async markAsRead(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
   ): Promise<{ success: boolean }> {
-    const { userId } = req.userContext;
-    await this.notificationsService.markAsRead(userId, id);
+    await this.notificationsService.markAsRead(user.userId, id);
     return { success: true };
   }
 
   @Post('read-all')
-  async markAllAsRead(@Req() req: Request): Promise<{ success: boolean }> {
-    const { userId } = req.userContext;
-    await this.notificationsService.markAllAsRead(userId);
+  async markAllAsRead(@CurrentUser() user: AuthUser): Promise<{ success: boolean }> {
+    await this.notificationsService.markAllAsRead(user.userId);
     return { success: true };
   }
 }

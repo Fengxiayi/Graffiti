@@ -1,15 +1,17 @@
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
-import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
 import { eq, and, desc, count } from 'drizzle-orm';
-import { notifications } from '@server/database/schema';
-import type { NotificationItem, NotificationListResponse } from '@shared/api.interface';
+
+import { DATABASE_CONNECTION } from '../../database/database.module';
+import type { AppDatabase } from '../../database/database.module';
+import { notifications } from '../../database/schema';
+import type { NotificationItem, NotificationListResponse } from '../../../shared/api.interface';
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
   constructor(
-    @Inject(DRIZZLE_DATABASE) private readonly db: PostgresJsDatabase,
+    @Inject(DATABASE_CONNECTION) private readonly db: AppDatabase,
   ) {}
 
   async list(userId: string): Promise<NotificationListResponse> {
