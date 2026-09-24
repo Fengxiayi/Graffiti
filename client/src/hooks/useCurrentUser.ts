@@ -1,35 +1,12 @@
-import { useState, useEffect } from 'react';
-import { logger } from '@lark-apaas/client-toolkit/logger';
-import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBackend';
+import type { UserInfo } from '@shared/api.interface';
+import { useAuth } from '../auth/AuthContext';
 
-interface CurrentUser {
-  userId: string;
-  userName?: string;
+interface CurrentUserResult {
+  user: UserInfo | null;
+  loading: boolean;
 }
 
-export function useCurrentUser() {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    const fetchUser = async () => {
-      try {
-        const res = await axiosForBackend.get('/api/user/me');
-        if (mounted && res.data?.userId) {
-          setUser(res.data);
-        }
-      } catch (err) {
-        logger.debug('Get current user failed, possibly not logged in');
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    void fetchUser();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
+export function useCurrentUser(): CurrentUserResult {
+  const { user, loading } = useAuth();
   return { user, loading };
 }

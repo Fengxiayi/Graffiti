@@ -23,9 +23,8 @@ import {
   DropdownMenuTrigger,
 } from '@client/src/components/ui/dropdown-menu';
 import { useCurrentUser } from '@client/src/hooks/useCurrentUser';
+import { useAuth } from '@client/src/auth/AuthContext';
 import { getNotifications } from '@client/src/api/notifications';
-import { logger } from '@lark-apaas/client-toolkit/logger';
-import { useAuthActions } from '@lark-apaas/client-toolkit/hooks/useAuthActions';
 import { UserDisplay } from '@client/src/components/business-ui/user-display';
 import { cn } from '@client/src/lib/utils';
 
@@ -39,11 +38,13 @@ const navItems = [
 
 function Layout() {
   const { user, loading } = useCurrentUser();
-  const { isLogin, goLogin, logout } = useAuthActions();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const isLogin = !!user;
 
   useEffect(() => {
     if (!isLogin) {
@@ -56,7 +57,7 @@ function Layout() {
         const res = await getNotifications();
         if (!cancelled) setUnreadCount(res.unreadCount);
       } catch (err) {
-        logger.debug('fetch unread failed', err);
+        console.debug('fetch unread failed', err);
       }
     };
     void fetchUnread();
@@ -82,7 +83,7 @@ function Layout() {
           variant="default"
           size="sm"
           className="rounded-full"
-          onClick={() => goLogin()}
+          onClick={() => navigate('/login')}
         >
           登录 / 注册
         </Button>
@@ -107,10 +108,12 @@ function Layout() {
             <User className="mr-2 h-4 w-4" />
             我的主页
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/admin')}>
-            <ShieldCheck className="mr-2 h-4 w-4" />
-            管理后台
-          </DropdownMenuItem>
+          {user.role === 'admin' && (
+            <DropdownMenuItem onClick={() => navigate('/admin')}>
+              <ShieldCheck className="mr-2 h-4 w-4" />
+              管理后台
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />

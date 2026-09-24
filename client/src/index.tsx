@@ -1,42 +1,45 @@
-import React, { useCallback, useEffect } from 'react';
-import ReactDOM from 'react-dom/client';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
-import { Toaster } from 'sonner';
 
-import { App } from './app';
+import RoutesComponent from './app';
 import { AuthProvider } from './auth/AuthContext';
-import { ThemeProvider } from './components/theme-provider';
+import { Toaster } from '@client/src/components/ui/sonner';
 import './index.css';
 
-function ErrorFallback({ error }: { error: Error }) {
+const CLIENT_BASE_PATH = import.meta.env.VITE_CLIENT_BASE_PATH || '/';
+
+function ErrorFallback({ error, resetErrorBoundary }: {
+  error: unknown;
+  resetErrorBoundary: () => void;
+}) {
+  const message = error instanceof Error ? error.message : '发生未知错误';
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-8 text-center">
-      <h1 className="text-2xl font-bold">页面出错了</h1>
-      <p className="max-w-md text-sm text-muted-foreground">{error.message}</p>
+      <h1 className="text-lg font-bold">页面出错了</h1>
+      <p className="max-w-md text-sm text-muted-foreground">{message}</p>
       <button
-        onClick={() => window.location.reload()}
-        className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+        className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        onClick={resetErrorBoundary}
       >
-        刷新重试
+        重新加载
       </button>
     </div>
   );
 }
 
-const basePath: string = import.meta.env.VITE_CLIENT_BASE_PATH || '/';
+const MainApp = () => {
+  return (
+    <BrowserRouter basename={CLIENT_BASE_PATH}>
+      <AuthProvider>
+        <ErrorBoundary fallbackRender={ErrorFallback}>
+          <RoutesComponent />
+          <Toaster />
+        </ErrorBoundary>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+};
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <ThemeProvider>
-        <BrowserRouter basename={basePath}>
-          <AuthProvider>
-            <App />
-            <Toaster position="top-center" richColors />
-          </AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
-    </ErrorBoundary>
-  </React.StrictMode>,
-);
+createRoot(document.getElementById('root')!).render(<MainApp />);

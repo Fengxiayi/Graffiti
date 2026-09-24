@@ -1,155 +1,166 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { Palette, Loader2 } from 'lucide-react';
 
-import { http } from '../../lib/http';
 import { useAuth } from '../../auth/AuthContext';
-import type { AuthResponse } from '../../../../shared/api.interface';
+import { Button } from '@client/src/components/ui/button';
+import { Input } from '@client/src/components/ui/input';
 
-interface LocationState {
-  from?: string;
-}
+type Mode = 'login' | 'register';
 
-export function AuthPage() {
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+export default function AuthPage() {
+  const { login, register } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from || '/';
+
+  const [mode, setMode] = useState<Mode>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const state = (location.state ?? {}) as LocationState;
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setPassword('');
+    setConfirmPassword('');
+  };
 
-  const submit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (mode === 'register' && password.length < 6) {
-      toast.error('密码至少 6 位');
-      return;
-    }
-    if (mode === 'register' && password !== confirmPassword) {
-      toast.error('两次输入的密码不一致');
-      return;
+    if (submitting) return;
+
+    if (mode === 'register') {
+      if (password !== confirmPassword) {
+        toast.error('两次输入的密码不一致');
+        return;
+      }
+      if (password.length < 6) {
+        toast.error('密码至少 6 位');
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
-      const endpoint = mode === 'login' ? '/auth/login' : '/auth/register';
-      const body =
-        mode === 'login'
-          ? { username, password }
-          : {
-              username,
-              password,
-              nickname: nickname.trim() || undefined,
-            };
-      const res = await http.post<AuthResponse>(endpoint, body);
-      login(res.data.token, res.data.user);
-      toast.success(mode === 'login' ? '登录成功' : '注册成功，欢迎加入大展宏涂！');
-      navigate(state.from || '/', { replace: true });
-    } catch (err: unknown) {
-      const msg: string =
+      if (mode === 'login') {
+        await login(username, password);
+        toast.success('登录成功，欢迎回来');
+      } else {
+        await register({ username, password, nickname: nickname || undefined });
+        toast.success('注册成功，已自动登录');
+      }
+      navigate(from, { replace: true });
+    } catch (err) {
+      const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        '操作失败，请稍后重试';
-      toast.error(msg);
+        (mode === 'login' ? '登录失败，请检查账号密码' : '注册失败，请稍后再试');
+      toast.error(Array.isArray(message) ? message[0] : message);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-fuchsia-50 px-4 py-12">
-      <div className="w-full max-w-md rounded-2xl border bg-white/80 p-8 shadow-xl backdrop-blur">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {mode === 'login' ? '登录大展宏涂' : '注册新账号'}
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {mode === 'login' ? '欢迎回来，继续你的涂鸦创作' : '自定义账号密码，无需邮箱'}
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/20 px-4">
+      <div className="w-full max-w-md">
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <Link to="/" className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+            <Palette className="h-6 w-6" />
+          </Link>
+          <h1 className="text-2xl font-bold">大展宏涂</h1>
+          <p className="text-sm text-muted-foreground">与小伙伴们共度涂鸦娱乐，大展宏涂</p>
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-6 flex rounded-full bg-muted p-1">
+            {(['login', 'register'] as Mode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => switchMode(m)}
+                className={`flex-1 rounded-full py-2 text-sm font-medium transition-colors ${
+                  mode === m ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground'
+                }`}
+              >
+                {m === 'login' ? '登录' : '注册'}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">账号</label>
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="2-50 个字符"
+                required
+                autoComplete="username"
+              />
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">密码</label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === 'register' ? '至少 6 位' : '请输入密码'}
+                required
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              />
+            </div>
+
+            {mode === 'register' && (
+              <>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">确认密码</label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="再次输入密码"
+                    required
+                    autoComplete="new-password"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-sm font-medium">
+                    昵称 <span className="text-xs text-muted-foreground">（可选）</span>
+                  </label>
+                  <Input
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    placeholder="展示用昵称"
+                    autoComplete="nickname"
+                  />
+                </div>
+              </>
+            )}
+
+            <Button type="submit" className="mt-2 w-full" disabled={submitting}>
+              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+              {mode === 'login' ? '登录' : '注册并登录'}
+            </Button>
+          </form>
+
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            {mode === 'login' ? '还没有账号？' : '已有账号？'}
+            <button
+              type="button"
+              className="ml-1 font-medium text-primary hover:underline"
+              onClick={() => switchMode(mode === 'login' ? 'register' : 'login')}
+            >
+              {mode === 'login' ? '立即注册' : '去登录'}
+            </button>
+          </p>
+          <p className="mt-2 text-center text-xs text-muted-foreground">
+            系统首个注册用户自动成为管理员
           </p>
         </div>
-
-        <form onSubmit={submit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">账号</label>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="输入账号（2-50 字符）"
-              required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">密码</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder={mode === 'register' ? '至少 6 位' : '输入密码'}
-              required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-            />
-          </div>
-
-          {mode === 'register' && (
-            <>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">确认密码</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="再次输入密码"
-                  required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">昵称（可选）</label>
-                <input
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder="给自己起个好听的名字"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
-                />
-              </div>
-            </>
-          )}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {submitting ? '请稍候…' : mode === 'login' ? '登录' : '注册'}
-          </button>
-        </form>
-
-        <div className="mt-5 text-center text-sm text-gray-500">
-          {mode === 'login' ? (
-            <>
-              还没有账号？{' '}
-              <button onClick={() => setMode('register')} className="font-medium text-indigo-600 hover:underline">
-                立即注册
-              </button>
-            </>
-          ) : (
-            <>
-              已有账号？{' '}
-              <button onClick={() => setMode('login')} className="font-medium text-indigo-600 hover:underline">
-                去登录
-              </button>
-            </>
-          )}
-        </div>
-
-        <p className="mt-4 text-center text-xs text-gray-400">
-          系统首个注册用户自动成为管理员
-        </p>
       </div>
     </div>
   );

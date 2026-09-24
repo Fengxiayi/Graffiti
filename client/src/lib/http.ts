@@ -1,12 +1,14 @@
 import axios from 'axios';
 
-import { TOKEN_KEY, UNAUTHORIZED_EVENT } from '../auth/AuthContext';
+/** localStorage 中保存 JWT 的键名 */
+export const TOKEN_KEY = 'graffiti_token';
 
-const baseURL: string = import.meta.env.VITE_API_BASE_URL || '/api';
+/** 未登录事件名（401 时广播，AuthContext 监听后清理状态） */
+export const UNAUTHORIZED_EVENT = 'graffiti:unauthorized';
 
-/** 统一 axios 实例：自动附带 Bearer Token，401 时广播未授权事件 */
+/** 统一 axios 实例：自动携带 Bearer token，401 时清理登录态 */
 export const http = axios.create({
-  baseURL,
+  baseURL: '/',
   timeout: 20000,
 });
 
@@ -20,16 +22,11 @@ http.interceptors.request.use((config) => {
 });
 
 http.interceptors.response.use(
-  (response) => response,
+  (res) => res,
   (error) => {
-    const status: number | undefined = error?.response?.status;
-    const requestUrl: string | undefined = error?.config?.url;
-    // 登录/注册接口的 401/400 不做全局登出
-    const isAuthEndpoint =
-      typeof requestUrl === 'string' &&
-      (requestUrl.includes('/api/auth/login') ||
-        requestUrl.includes('/api/auth/register'));
-    if (status === 401 && !isAuthEndpoint) {
+    const url: string = error?.config?.url ?? '';
+    if (error?.response?.status === 401 && !url.includes('/api/auth/login')) {
+      localStorage.removeItem(TOKEN_KEY);
       window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
     }
     return Promise.reject(error);
