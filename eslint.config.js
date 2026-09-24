@@ -1,5 +1,7 @@
+const js = require('@eslint/js');
 const tseslint = require('typescript-eslint');
-const { eslintPresetsOfSimple } = require('@lark-apaas/fullstack-presets');
+const reactHooks = require('eslint-plugin-react-hooks');
+const reactRefresh = require('eslint-plugin-react-refresh');
 
 module.exports = tseslint.config(
   {
@@ -7,54 +9,41 @@ module.exports = tseslint.config(
       'dist',
       'dist-server',
       'node_modules',
-      'source_package',
-      'client/src/api/gen',
+      'client/dist',
       '**/*.d.ts',
       '**/*.js.map',
     ],
   },
-  // Client configuration
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     files: ['client/**/*.{ts,tsx}', 'shared/**/*.{ts,tsx}'],
-    extends: [
-      ...eslintPresetsOfSimple.client,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: './tsconfig.app.json',
-      },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
     },
-    settings: {
-      'import/resolver': {
-        alias: {
-          map: [
-            ['@', './client/src'],
-            ['@client', './client'],
-            ['@shared', './shared'],
-          ],
-          extensions: ['.js', '.jsx', '.ts', '.tsx'],
-        },
-      },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
-  // Server configuration
   {
-    files: ['server/**/*.{ts,tsx}', 'shared/**/*.{ts,tsx}'],
-    extends: [
-      ...eslintPresetsOfSimple.server,
-    ],
+    files: ['**/*.config.js'],
     languageOptions: {
-      parserOptions: {
-        project: './tsconfig.node.json',
-      }
+      globals: {
+        require: 'readonly',
+        module: 'readonly',
+        process: 'readonly',
+        __dirname: 'readonly',
+      },
     },
-    settings: {
-      'import/resolver': {
-        alias: {
-          map: [['@server', './server'], ['@shared', './shared']],
-          extensions: ['.js', '.jsx', '.ts', '.tsx'],
-        },
-      }
-    }
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-undef': 'off',
+    },
+  },
+  {
+    files: ['server/**/*.ts'],
+    rules: {},
   },
 );
