@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { useAuthActions } from '@lark-apaas/client-toolkit/hooks/useAuthActions';
+import { useAuthActions } from '@client/src/hooks/useAuthActions';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@client/src/components/ui/tabs';
 import { Button } from '@client/src/components/ui/button';
@@ -13,16 +12,7 @@ import FeedbackManage from './FeedbackManage';
 function AdminPage() {
   const { user, loading: userLoading } = useCurrentUser();
   const { isLogin, goLogin } = useAuthActions();
-  const [adminUser, setAdminUser] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user?.userId) return;
-    void fetch(`/api/admin/projects?page=1&pageSize=1`)
-      .then((res) => {
-        if (res.ok) setAdminUser(user.userId);
-      })
-      .catch(() => setAdminUser(null));
-  }, [user?.userId]);
+  const isAdmin = user?.role === 'admin';
 
   if (userLoading) {
     return (
@@ -45,7 +35,7 @@ function AdminPage() {
     );
   }
 
-  if (!adminUser) {
+  if (!isAdmin) {
     return (
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-center px-6 py-32 text-center">
         <h1 className="text-3xl font-bold tracking-tight">管理后台</h1>

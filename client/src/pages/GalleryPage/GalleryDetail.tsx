@@ -12,7 +12,7 @@ import { Button } from '@client/src/components/ui/button';
 import { Textarea } from '@client/src/components/ui/textarea';
 import { Badge } from '@client/src/components/ui/badge';
 import { UserDisplay } from '@client/src/components/business-ui/user-display';
-import { useAuthActions } from '@lark-apaas/client-toolkit/hooks/useAuthActions';
+import { useAuthActions } from '@client/src/hooks/useAuthActions';
 import { useCurrentUser } from '@client/src/hooks/useCurrentUser';
 import {
   getGalleryItem,
@@ -21,7 +21,7 @@ import {
   createGalleryComment,
   deleteGalleryComment,
 } from '@client/src/api/gallery';
-import { adminSetGalleryPinned, adminDeleteGalleryItem } from '@client/src/api/admin';
+import { adminSetGalleryPinned, adminDeleteGalleryItem, adminDeleteGalleryComment } from '@client/src/api/admin';
 import type { GalleryItem } from '@shared/api.interface';
 import { cn } from '@client/src/lib/utils';
 

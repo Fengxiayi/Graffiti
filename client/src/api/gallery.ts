@@ -1,23 +1,23 @@
-import { axiosForBackend } from '@lark-apaas/client-toolkit/utils/getAxiosForBackend';
+import { http } from '../lib/http';
 import type { GalleryItem, GalleryListResponse } from '@shared/api.interface';
 
 export async function getGallery(
   page = 1,
   pageSize = 12,
 ): Promise<GalleryListResponse> {
-  const { data } = await axiosForBackend.get('/api/gallery', {
+  const { data } = await http.get('/api/gallery', {
     params: { page, pageSize },
   });
   return data;
 }
 
 export async function getMyGalleryItems(): Promise<{ items: GalleryItem[] }> {
-  const { data } = await axiosForBackend.get('/api/gallery/mine');
+  const { data } = await http.get('/api/gallery/mine');
   return data;
 }
 
 export async function getGalleryItem(id: string): Promise<GalleryItem> {
-  const { data } = await axiosForBackend.get(`/api/gallery/${id}`);
+  const { data } = await http.get(`/api/gallery/${id}`);
   return data;
 }
 
@@ -26,7 +26,7 @@ export async function createGalleryItem(payload: {
   imageUrl: string;
   projectId?: string;
 }): Promise<GalleryItem> {
-  const { data } = await axiosForBackend.post('/api/gallery', payload);
+  const { data } = await http.post('/api/gallery', payload);
   return data;
 }
 
@@ -34,7 +34,7 @@ export async function toggleGalleryLike(id: string): Promise<{
   liked: boolean;
   likeCount: number;
 }> {
-  const { data } = await axiosForBackend.post(`/api/gallery/${id}/like`);
+  const { data } = await http.post(`/api/gallery/${id}/like`);
   return data;
 }
 
@@ -49,7 +49,7 @@ export async function getGalleryComments(galleryId: string): Promise<{
   }>;
   total: number;
 }> {
-  const { data } = await axiosForBackend.get(`/api/gallery/${galleryId}/comments`);
+  const { data } = await http.get(`/api/gallery/${galleryId}/comments`);
   return data;
 }
 
@@ -65,10 +65,10 @@ export async function createGalleryComment(payload: {
   creatorId: string;
   createdAt: string;
 }> {
-  const { data } = await axiosForBackend.post('/api/gallery/comments', payload);
+  const { data } = await http.post('/api/gallery/comments', payload);
   return data;
 }
 
 export async function deleteGalleryComment(id: string): Promise<void> {
-  await axiosForBackend.delete(`/api/gallery/comments/${id}`);
+  await http.delete(`/api/gallery/comments/${id}`);
 }

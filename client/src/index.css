@@ -1,6 +1,17 @@
-@import '@lark-apaas/client-toolkit/lib/index.css';
+@import "tailwindcss";
 @import "tw-animate-css";
 @import "./tailwind-theme.css";
 @import "./typography.css";
 
 @config "../../tailwind.config.ts";
+
+/* 覆盖平台默认 body 样式，保证独立部署下表现一致 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  min-height: 100vh;
+}
