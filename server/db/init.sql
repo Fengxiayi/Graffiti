@@ -1,5 +1,7 @@
 -- 大展宏涂 · 数据库初始化脚本（PostgreSQL）
 -- 用法：psql -U <user> -d <database> -f server/db/init.sql
+-- 说明：PostgreSQL 13 及以上内置 gen_random_uuid()；12 及以下需要本扩展
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
