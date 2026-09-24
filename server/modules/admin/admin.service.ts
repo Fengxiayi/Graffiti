@@ -1,5 +1,4 @@
 import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
-import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
 import {
   projects,
   projectMembers,
@@ -7,7 +6,9 @@ import {
   galleryComments,
   feedbacks,
   strokes,
-} from '@server/database/schema';
+} from '../../database/schema';
+import { DATABASE_CONNECTION } from '../../database/database.module';
+import type { AppDatabase } from '../../database/database.module';
 import { eq, desc, sql, count } from 'drizzle-orm';
 import type {
   AdminProjectListResponse,
@@ -16,13 +17,13 @@ import type {
   ProjectItem,
   FeedbackItem,
   GalleryItem,
-} from '@shared/api.interface';
+} from '../../../shared/api.interface';
 
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(@Inject(DRIZZLE_DATABASE) private readonly db: PostgresJsDatabase) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: AppDatabase) {}
 
   // ─── Projects ────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ export class AdminService {
         description: projects.description,
         isHidden: projects.isHidden,
         isPinned: projects.isPinned,
-        creatorId: projects.createdBy,
+        creatorId: projects.creatorId,
         memberCount: this.db.$count(projectMembers, eq(projectMembers.projectId, projects.id)),
         strokeCount: this.db.$count(strokes, eq(strokes.projectId, projects.id)),
         createdAt: projects.createdAt,
@@ -65,10 +66,10 @@ export class AdminService {
     return { items: projectItems, total: Number(total) };
   }
 
-  async setProjectHidden(id: string, isHidden: boolean, userId: string): Promise<void> {
+  async setProjectHidden(id: string, isHidden: boolean): Promise<void> {
     const updated = await this.db
       .update(projects)
-      .set({ isHidden, updatedAt: new Date(), updatedBy: userId })
+      .set({ isHidden, updatedAt: new Date() })
       .where(eq(projects.id, id))
       .returning({ id: projects.id });
     if (updated.length === 0) {
@@ -76,10 +77,10 @@ export class AdminService {
     }
   }
 
-  async setProjectPinned(id: string, isPinned: boolean, userId: string): Promise<void> {
+  async setProjectPinned(id: string, isPinned: boolean): Promise<void> {
     const updated = await this.db
       .update(projects)
-      .set({ isPinned, updatedAt: new Date(), updatedBy: userId })
+      .set({ isPinned, updatedAt: new Date() })
       .where(eq(projects.id, id))
       .returning({ id: projects.id });
     if (updated.length === 0) {
@@ -109,7 +110,7 @@ export class AdminService {
         isPinned: galleryItems.isPinned,
         likeCount: galleryItems.likeCount,
         commentCount: galleryItems.commentCount,
-        creatorId: galleryItems.createdBy,
+        creatorId: galleryItems.creatorId,
         createdAt: galleryItems.createdAt,
       })
       .from(galleryItems)
@@ -139,10 +140,10 @@ export class AdminService {
     };
   }
 
-  async setGalleryPinned(id: string, isPinned: boolean, userId: string): Promise<void> {
+  async setGalleryPinned(id: string, isPinned: boolean): Promise<void> {
     const updated = await this.db
       .update(galleryItems)
-      .set({ isPinned, updatedAt: new Date(), updatedBy: userId })
+      .set({ isPinned, updatedAt: new Date() })
       .where(eq(galleryItems.id, id))
       .returning({ id: galleryItems.id });
     if (updated.length === 0) {
@@ -161,7 +162,7 @@ export class AdminService {
   }
 
   async deleteGalleryComment(id: string): Promise<void> {
-    await this.db.transaction(async (tx: PostgresJsDatabase) => {
+    await this.db.transaction(async (tx: AppDatabase) => {
       const deleted = await tx
         .delete(galleryComments)
         .where(eq(galleryComments.id, id))

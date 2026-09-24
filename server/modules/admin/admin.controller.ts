@@ -6,21 +6,21 @@ import {
   Param,
   Query,
   Body,
-  Req,
   DefaultValuePipe,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
-import { NeedLogin } from '@lark-apaas/fullstack-nestjs-core';
-import { IsString, IsBoolean, IsIn } from 'class-validator';
+import { IsBoolean, IsIn, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-import type { Request } from 'express';
+
 import { AdminService } from './admin.service';
+import { AdminGuard } from '../../auth/guards/admin.guard';
 import type {
   AdminProjectListResponse,
   AdminFeedbackListResponse,
   GalleryListResponse,
   UpdateFeedbackStatusRequest,
-} from '@shared/api.interface';
+} from '../../../shared/api.interface';
 
 class SetHiddenDto {
   @IsBoolean()
@@ -40,7 +40,7 @@ class UpdateFeedbackStatusDto implements UpdateFeedbackStatusRequest {
   status!: string;
 }
 
-@NeedLogin()
+@UseGuards(AdminGuard)
 @Controller('api/admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -57,22 +57,18 @@ export class AdminController {
 
   @Patch('projects/:id/hidden')
   async setProjectHidden(
-    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: SetHiddenDto,
   ): Promise<void> {
-    const { userId } = req.userContext;
-    return this.adminService.setProjectHidden(id, dto.isHidden, userId);
+    return this.adminService.setProjectHidden(id, dto.isHidden);
   }
 
   @Patch('projects/:id/pinned')
   async setProjectPinned(
-    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: SetPinnedDto,
   ): Promise<void> {
-    const { userId } = req.userContext;
-    return this.adminService.setProjectPinned(id, dto.isPinned, userId);
+    return this.adminService.setProjectPinned(id, dto.isPinned);
   }
 
   @Delete('projects/:id')
@@ -92,12 +88,10 @@ export class AdminController {
 
   @Patch('gallery/:id/pinned')
   async setGalleryPinned(
-    @Req() req: Request,
     @Param('id') id: string,
     @Body() dto: SetPinnedDto,
   ): Promise<void> {
-    const { userId } = req.userContext;
-    return this.adminService.setGalleryPinned(id, dto.isPinned, userId);
+    return this.adminService.setGalleryPinned(id, dto.isPinned);
   }
 
   @Delete('gallery/:id')

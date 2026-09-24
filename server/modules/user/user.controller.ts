@@ -1,17 +1,15 @@
-import { Controller, Get, Req } from '@nestjs/common';
-import type { Request } from 'express';
-import { NeedLogin } from '@lark-apaas/fullstack-nestjs-core';
+import { Controller, Get } from '@nestjs/common';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../../auth/decorators/current-user.decorator';
 
 @Controller('api/user')
 export class UserController {
   @Get('me')
-  @NeedLogin()
-  async getMe(@Req() req: Request) {
-    const { userId, userName, userNameI18n } = req.userContext;
+  getMe(@CurrentUser() user: AuthUser) {
     return {
-      userId,
-      userName,
-      userNameI18n,
+      userId: user.userId,
+      userName: user.username,
+      role: user.role,
     };
   }
 }

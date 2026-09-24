@@ -1,8 +1,11 @@
-import { Controller, Post, Body, Req } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { IsString, IsOptional, MaxLength } from 'class-validator';
-import type { Request } from 'express';
+
 import { FeedbackService } from './feedback.service';
-import type { CreateFeedbackRequest, FeedbackItem } from '@shared/api.interface';
+import { Public } from '../../auth/decorators/public.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../../auth/decorators/current-user.decorator';
+import type { CreateFeedbackRequest, FeedbackItem } from '../../../shared/api.interface';
 
 class CreateFeedbackDto implements CreateFeedbackRequest {
   @IsString()
@@ -19,12 +22,12 @@ class CreateFeedbackDto implements CreateFeedbackRequest {
 export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
+  @Public()
   @Post()
   async create(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser | undefined,
     @Body() dto: CreateFeedbackDto,
   ): Promise<FeedbackItem> {
-    const userId: string | undefined = req.userContext?.userId;
-    return this.feedbackService.create(dto, userId);
+    return this.feedbackService.create(dto, user?.userId);
   }
 }
