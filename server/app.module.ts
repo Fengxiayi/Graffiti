@@ -1,9 +1,11 @@
-import { APP_FILTER } from '@nestjs/core';
 import { Module } from '@nestjs/common';
-import { PlatformModule } from '@lark-apaas/fullstack-nestjs-core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 
+import { DatabaseModule } from './database/database.module';
+import { AuthModule } from './auth/auth.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { GlobalExceptionFilter } from './common/filters/exception.filter';
-import { ViewModule } from './modules/view/view.module';
+
 import { ProjectsModule } from './modules/projects/projects.module';
 import { StrokesModule } from './modules/strokes/strokes.module';
 import { GalleryModule } from './modules/gallery/gallery.module';
@@ -14,8 +16,8 @@ import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
-    PlatformModule.forRoot(),
-    // ====== @route-section: business-modules START ======
+    DatabaseModule,
+    AuthModule,
     ProjectsModule,
     StrokesModule,
     GalleryModule,
@@ -23,13 +25,12 @@ import { UserModule } from './modules/user/user.module';
     FeedbackModule,
     AdminModule,
     UserModule,
-    // ====== @route-section: business-modules END ======
-
-    // ⚠️ @route-order: last
-    // ViewModule is the fallback route module, must be registered last.
-    ViewModule,
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
     {
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,

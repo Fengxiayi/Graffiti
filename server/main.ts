@@ -1,31 +1,40 @@
 import { NestFactory } from '@nestjs/core';
-import { Logger } from '@nestjs/common';
-import { configureApp } from '@lark-apaas/fullstack-nestjs-core';
-import { join } from 'path';
-import { __express as hbsExpressEngine } from 'hbs';
-
+import { Logger, ValidationPipe } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
+import { existsSync } from 'fs';
+
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    abortOnError: process.env.NODE_ENV !== 'development',
-  });
-  await configureApp(app, {
-    disableSwagger: true,
-  });
-  const logger = new Logger('Bootstrap');
-  const host = process.env.SERVER_HOST || 'localhost';
-  const port = Number(process.env.SERVER_PORT || '3000');
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.enableCors();
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
-  // 注册视图引擎, 渲染 client 目录下的 html 文件
-  app.setBaseViewsDir(join(process.cwd(), 'dist/client'));
-  app.setViewEngine('html');
-  app.engine('html', hbsExpressEngine);
+  const port = Number(process.env.PORT || '3000');
 
-  await app.listen(port, host);
-  logger.log(`Server running on ${host}:${port}`);
-  logger.log(`API endpoints ready at http://${host}:${port}/api`);
+  // 生产环境：托管前端构建产物，并对非 /api 的 GET 请求做 SPA fallback
+  const clientDist = join(process.cwd(), 'client', 'dist');
+  if (existsSync(clientDist)) {
+    app.useStaticAssets(clientDist);
+    app.use((req: { method: string; path: string }, res: { sendFile: (p: string) => void }, next: () => void) => {
+      if (req.method === 'GET' && !req.path.startsWith('/api')) {
+        res.sendFile(join(clientDist, 'index.html'));
+      } else {
+        next();
+      }
+    });
+    Logger.log(`Static assets served from ${clientDist}`);
+  }
+
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`大展宏涂服务已启动: http://0.0.0.0:${port}`);
+  Logger.log(`API 地址: http://0.0.0.0:${port}/api`);
 }
 
 bootstrap();

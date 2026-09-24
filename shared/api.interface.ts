@@ -1,6 +1,32 @@
-/* 前后端共享的类型写在这里 */
+// ========== 用户相关 ==========
+export interface UserInfo {
+  userId: string;
+  userName: string;
+  nickname?: string | null;
+  role: 'user' | 'admin';
+}
 
-// ========== 项目相关 ==========
+export interface RegisterRequest {
+  username: string;
+  password: string;
+  nickname?: string;
+}
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: UserInfo;
+}
+
+export interface CreateProjectRequest {
+  name: string;
+  description?: string;
+}
+
 export interface ProjectItem {
   id: string;
   name: string;
@@ -22,30 +48,17 @@ export interface ProjectListResponse {
   pageSize: number;
 }
 
-export interface CreateProjectRequest {
-  name: string;
-  description?: string;
-}
-
-export interface UpdateProjectRequest {
-  name?: string;
-  description?: string;
-  coverUrl?: string;
-  isHidden?: boolean;
-  isPinned?: boolean;
-}
-
 export interface MyProjectsResponse {
   created: ProjectItem[];
   joined: ProjectItem[];
 }
 
-// ========== 笔迹相关 ==========
 export interface StrokeData {
-  type: 'pen' | 'eraser';
-  color: string;
-  width: number;
-  points: { x: number; y: number }[];
+  type: string;
+  color?: string;
+  width?: number;
+  points: Array<{ x: number; y: number }>;
+  [key: string]: unknown;
 }
 
 export interface StrokeItem {
@@ -67,7 +80,6 @@ export interface CreateStrokeRequest {
   strokeData: StrokeData;
 }
 
-// ========== 涂鸦精选相关 ==========
 export interface GalleryItem {
   id: string;
   title: string;
@@ -94,7 +106,6 @@ export interface CreateGalleryRequest {
   projectId?: string;
 }
 
-// ========== 精选评论 ==========
 export interface GalleryCommentItem {
   id: string;
   galleryId: string;
@@ -115,7 +126,6 @@ export interface CreateGalleryCommentRequest {
   replyTo?: string;
 }
 
-// ========== 通知相关 ==========
 export interface NotificationItem {
   id: string;
   type: string;
@@ -130,7 +140,6 @@ export interface NotificationListResponse {
   unreadCount: number;
 }
 
-// ========== 反馈相关 ==========
 export interface FeedbackItem {
   id: string;
   content: string;
@@ -148,14 +157,6 @@ export interface UpdateFeedbackStatusRequest {
   status: string;
 }
 
-// ========== 用户相关 ==========
-export interface UserInfo {
-  userId: string;
-  name: string;
-  avatar: string;
-}
-
-// ========== 管理员相关 ==========
 export interface AdminProjectListResponse {
   items: ProjectItem[];
   total: number;
