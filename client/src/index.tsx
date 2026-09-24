@@ -1,36 +1,42 @@
-import React from 'react';
-import { createRoot } from 'react-dom/client';
+import React, { useCallback, useEffect } from 'react';
+import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
+import { Toaster } from 'sonner';
 
-import { AppContainer } from '@lark-apaas/client-toolkit/components/AppContainer';
-import { ErrorRender } from '@lark-apaas/client-toolkit/components/ErrorRender';
-
-import RoutesComponent from './app.tsx';
+import { App } from './app';
+import { AuthProvider } from './auth/AuthContext';
+import { ThemeProvider } from './components/theme-provider';
 import './index.css';
-import { createPortal } from 'react-dom';
-import { Toaster } from '@client/src/components/ui/sonner';
 
-const CLIENT_BASE_PATH = process.env.CLIENT_BASE_PATH || '/';
-
-const MainApp = () => {
+function ErrorFallback({ error }: { error: Error }) {
   return (
-    <BrowserRouter basename={CLIENT_BASE_PATH}>
-      <AppContainer defaultTheme="light">
-        <ErrorBoundary
-          fallbackRender={({ error, resetErrorBoundary }) => (
-            <ErrorRender
-              error={error as Error}
-              resetErrorBoundary={resetErrorBoundary}
-            />
-          )}
-        >
-          <RoutesComponent />
-          {createPortal(<Toaster />, document.body)}
-        </ErrorBoundary>
-      </AppContainer>
-    </BrowserRouter>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-8 text-center">
+      <h1 className="text-2xl font-bold">页面出错了</h1>
+      <p className="max-w-md text-sm text-muted-foreground">{error.message}</p>
+      <button
+        onClick={() => window.location.reload()}
+        className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+      >
+        刷新重试
+      </button>
+    </div>
   );
-};
+}
 
-createRoot(document.getElementById('root')!).render(<MainApp />);
+const basePath: string = import.meta.env.VITE_CLIENT_BASE_PATH || '/';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <ThemeProvider>
+        <BrowserRouter basename={basePath}>
+          <AuthProvider>
+            <App />
+            <Toaster position="top-center" richColors />
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </ErrorBoundary>
+  </React.StrictMode>,
+);
