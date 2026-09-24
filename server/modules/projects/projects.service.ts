@@ -1,22 +1,23 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq, desc, and, count, inArray } from 'drizzle-orm';
-import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
+import { eq, desc, count, inArray } from 'drizzle-orm';
 
-import { projects, projectMembers, strokes } from '@server/database/schema';
+import { DATABASE_CONNECTION } from '../../database/database.module';
+import type { AppDatabase } from '../../database/database.module';
+import { projects, projectMembers, strokes } from '../../database/schema';
 import type {
   ProjectItem,
   ProjectListResponse,
   CreateProjectRequest,
   MyProjectsResponse,
-} from '@shared/api.interface';
+} from '../../../shared/api.interface';
 
 @Injectable()
 export class ProjectsService {
   constructor(
-    @Inject(DRIZZLE_DATABASE) private readonly db: PostgresJsDatabase,
+    @Inject(DATABASE_CONNECTION) private readonly db: AppDatabase,
   ) {}
 
-  private buildProjectQuery(whereClause?: ReturnType<typeof and>) {
+  private buildProjectQuery(whereClause?: ReturnType<typeof eq>) {
     const base = this.db
       .select({
         id: projects.id,
@@ -25,7 +26,7 @@ export class ProjectsService {
         description: projects.description,
         isHidden: projects.isHidden,
         isPinned: projects.isPinned,
-        createdBy: projects.createdBy,
+        creatorId: projects.creatorId,
         createdAt: projects.createdAt,
         updatedAt: projects.updatedAt,
         memberCount: this.db.$count(projectMembers, eq(projectMembers.projectId, projects.id)),
@@ -45,7 +46,7 @@ export class ProjectsService {
     description: string | null;
     isHidden: boolean;
     isPinned: boolean;
-    createdBy: string;
+    creatorId: string;
     createdAt: Date;
     updatedAt: Date;
     memberCount: number;
@@ -58,7 +59,7 @@ export class ProjectsService {
       description: row.description,
       isHidden: row.isHidden,
       isPinned: row.isPinned,
-      creatorId: row.createdBy,
+      creatorId: row.creatorId,
       memberCount: row.memberCount,
       strokeCount: row.strokeCount,
       createdAt: row.createdAt.toISOString(),
@@ -106,6 +107,7 @@ export class ProjectsService {
         .values({
           name: dto.name,
           description: dto.description ?? null,
+          creatorId: userId,
         })
         .returning({
           id: projects.id,
@@ -114,7 +116,7 @@ export class ProjectsService {
           description: projects.description,
           isHidden: projects.isHidden,
           isPinned: projects.isPinned,
-          createdBy: projects.createdBy,
+          creatorId: projects.creatorId,
           createdAt: projects.createdAt,
           updatedAt: projects.updatedAt,
         });
@@ -134,23 +136,19 @@ export class ProjectsService {
   }
 
   async getMyProjects(userId: string): Promise<MyProjectsResponse> {
-    // 我创建的
     const createdRows = await this.buildProjectQuery(
-      eq(projects.createdBy, userId),
+      eq(projects.creatorId, userId),
     ).orderBy(desc(projects.createdAt));
 
-    // 我参与的（通过 project_members 表）
     const membershipRows = await this.db
       .select({ projectId: projectMembers.projectId })
       .from(projectMembers)
       .where(eq(projectMembers.userId, userId));
 
+    const createdIds: string[] = createdRows.map((r) => r.id);
     const joinedProjectIds: string[] = membershipRows
       .map((row: { projectId: string }) => row.projectId)
-      .filter((pid: string) => {
-        const createdIds: string[] = createdRows.map((r) => r.id);
-        return !createdIds.includes(pid);
-      });
+      .filter((pid: string) => !createdIds.includes(pid));
 
     let joinedRows: typeof createdRows = [];
     if (joinedProjectIds.length > 0) {

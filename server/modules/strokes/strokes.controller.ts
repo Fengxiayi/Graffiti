@@ -6,24 +6,25 @@ import {
   Body,
   Param,
   Query,
-  Req,
   DefaultValuePipe,
   ParseIntPipe,
 } from '@nestjs/common';
-import { NeedLogin } from '@lark-apaas/fullstack-nestjs-core';
-import type { Request } from 'express';
 
 import { StrokesService } from './strokes.service';
+import { Public } from '../../auth/decorators/public.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../../auth/decorators/current-user.decorator';
 import type {
   StrokeItem,
   StrokeListResponse,
   CreateStrokeRequest,
-} from '@shared/api.interface';
+} from '../../../shared/api.interface';
 
 @Controller('api/strokes')
 export class StrokesController {
   constructor(private readonly strokesService: StrokesService) {}
 
+  @Public()
   @Get(':projectId')
   async listByProject(
     @Param('projectId') projectId: string,
@@ -34,24 +35,19 @@ export class StrokesController {
   }
 
   @Post()
-  @NeedLogin()
   async create(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
     @Body() dto: CreateStrokeRequest,
   ): Promise<StrokeItem> {
-    const { userId } = req.userContext;
-    return this.strokesService.create(userId, dto.projectId, dto.strokeData);
+    return this.strokesService.create(user.userId, dto.projectId, dto.strokeData);
   }
 
   @Delete(':id')
-  @NeedLogin()
   async delete(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Query('isAdmin') isAdmin?: string,
   ): Promise<{ success: boolean }> {
-    const { userId } = req.userContext;
-    await this.strokesService.delete(userId, id, isAdmin === 'true');
+    await this.strokesService.delete(user.userId, user.role, id);
     return { success: true };
   }
 }

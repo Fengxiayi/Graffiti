@@ -5,25 +5,26 @@ import {
   Body,
   Param,
   Query,
-  Req,
   DefaultValuePipe,
   ParseIntPipe,
 } from '@nestjs/common';
-import { NeedLogin } from '@lark-apaas/fullstack-nestjs-core';
-import type { Request } from 'express';
 
 import { ProjectsService } from './projects.service';
+import { Public } from '../../auth/decorators/public.decorator';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
+import type { AuthUser } from '../../auth/decorators/current-user.decorator';
 import type {
   ProjectItem,
   ProjectListResponse,
   CreateProjectRequest,
   MyProjectsResponse,
-} from '@shared/api.interface';
+} from '../../../shared/api.interface';
 
 @Controller('api/projects')
 export class ProjectsController {
   constructor(private readonly projectsService: ProjectsService) {}
 
+  @Public()
   @Get()
   async list(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
@@ -33,24 +34,21 @@ export class ProjectsController {
   }
 
   @Get('mine')
-  @NeedLogin()
-  async getMyProjects(@Req() req: Request): Promise<MyProjectsResponse> {
-    const { userId } = req.userContext;
-    return this.projectsService.getMyProjects(userId);
+  async getMyProjects(@CurrentUser() user: AuthUser): Promise<MyProjectsResponse> {
+    return this.projectsService.getMyProjects(user.userId);
   }
 
+  @Public()
   @Get(':id')
   async getById(@Param('id') id: string): Promise<ProjectItem> {
     return this.projectsService.getById(id);
   }
 
   @Post()
-  @NeedLogin()
   async create(
-    @Req() req: Request,
+    @CurrentUser() user: AuthUser,
     @Body() dto: CreateProjectRequest,
   ): Promise<ProjectItem> {
-    const { userId } = req.userContext;
-    return this.projectsService.create(userId, dto);
+    return this.projectsService.create(user.userId, dto);
   }
 }

@@ -1,18 +1,19 @@
 import { Inject, Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { eq, and, asc, gt } from 'drizzle-orm';
-import { DRIZZLE_DATABASE, type PostgresJsDatabase } from '@lark-apaas/fullstack-nestjs-core';
 
-import { strokes, projects } from '@server/database/schema';
+import { DATABASE_CONNECTION } from '../../database/database.module';
+import type { AppDatabase } from '../../database/database.module';
+import { strokes, projects } from '../../database/schema';
 import type {
   StrokeItem,
   StrokeListResponse,
   StrokeData,
-} from '@shared/api.interface';
+} from '../../../shared/api.interface';
 
 @Injectable()
 export class StrokesService {
   constructor(
-    @Inject(DRIZZLE_DATABASE) private readonly db: PostgresJsDatabase,
+    @Inject(DATABASE_CONNECTION) private readonly db: AppDatabase,
   ) {}
 
   private mapToStrokeItem(row: {
@@ -36,7 +37,6 @@ export class StrokesService {
     cursor?: string,
     limit: number = 50,
   ): Promise<StrokeListResponse> {
-    // 校验项目存在
     const projectRows = await this.db
       .select({ id: projects.id })
       .from(projects)
@@ -83,7 +83,6 @@ export class StrokesService {
     projectId: string,
     strokeData: StrokeData,
   ): Promise<StrokeItem> {
-    // 校验项目存在
     const projectRows = await this.db
       .select({ id: projects.id })
       .from(projects)
@@ -111,7 +110,7 @@ export class StrokesService {
     return this.mapToStrokeItem(row);
   }
 
-  async delete(userId: string, strokeId: string, isAdmin: boolean): Promise<void> {
+  async delete(userId: string, role: 'user' | 'admin', strokeId: string): Promise<void> {
     const rows = await this.db
       .select({
         id: strokes.id,
@@ -126,6 +125,7 @@ export class StrokesService {
       throw new NotFoundException('笔迹不存在');
     }
 
+    const isAdmin = role === 'admin';
     if (!isAdmin && stroke.userId !== userId) {
       throw new ForbiddenException('无权删除他人笔迹');
     }
